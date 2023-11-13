@@ -1,0 +1,7 @@
+# Ignored files
+/shelf/
+/workspace.xml
+.idea/
+books.db
+/modules.xml
+/.idea/modules.xml
