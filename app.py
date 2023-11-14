@@ -1,7 +1,9 @@
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import inspect
 from models.Book import Book
 from models.User import User
+import xml.etree.ElementTree as ET  # For XML generation
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///books.db'  # Use SQLite for simplicity
@@ -60,19 +62,47 @@ def get_books():
 
 @app.route('/user/publish-book', methods=['POST'])
 def publish_book():
-    data = request.get_json()
+    content_type = request.headers.get('Content-Type')
 
-    title = data.get('title')
-    description = data.get('description')
-    author_id = data.get('author_id')  # Assuming you provide the author's ID
-    cover_image_url = data.get('cover_image_url')
-    price = data.get('price')
+    if content_type == 'application/xml':
+        xml_data = request.data  # Get the XML data from the request
+        xml_root = ET.fromstring(xml_data)
 
-    new_book = BookModel(title=title, description=description, author_id=author_id, cover_image_url=cover_image_url, price=price)
-    db.session.add(new_book)
-    db.session.commit()
+        new_book = BookModel()
+        book_attributes = [prop.key for prop in inspect(BookModel).attrs]  # Get attributes of the Book model
 
-    return jsonify({'message': 'Book published successfully'}), 201
+        for elem in xml_root:
+            tag = elem.tag.lower()
+            if tag in book_attributes:  # Check if the attribute exists in the Book model
+                setattr(new_book, tag, elem.text)  # Set the attribute value
+            else:
+                return jsonify({'error': f'Invalid element in XML: {tag}'}), 400  # Return error for invalid element
+
+        db.session.add(new_book)
+        db.session.commit()
+
+        return jsonify({'message': 'Book added successfully from XML'}), 201
+
+    elif content_type == 'application/json':
+        data = request.get_json()
+
+        title = data.get('title')
+        description = data.get('description')
+        author_id = data.get('author_id')  # Assuming you provide the author's ID
+        cover_image_url = data.get('cover_image_url')
+        price = data.get('price')
+
+        new_book = BookModel(title=title, description=description, author_id=author_id, cover_image_url=cover_image_url,
+                             price=price)
+        db.session.add(new_book)
+        db.session.commit()
+
+        return jsonify({'message': 'Book published successfully from JSON'}), 201
+
+    else:
+        return jsonify({'error': 'Unsupported Content-Type'})
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)
