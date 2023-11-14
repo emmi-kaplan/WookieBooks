@@ -1,12 +1,13 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 from models.Book import Book
 
 
 @dataclass
 class User:
     id: int
-    username: str
+    name: str
     email: str
     password: str
     books: List[Book]
+    author_pseudonym: Optional[str] = None
