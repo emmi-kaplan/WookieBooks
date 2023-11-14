@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, Response
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect
 from models.Book import Book
@@ -17,7 +17,10 @@ class BookModel(db.Model):
     author_id = db.Column(db.Integer, db.ForeignKey('user_model.id'), nullable=False)
     cover_image_url = db.Column(db.String(255), nullable=False)
     price = db.Column(db.Float, nullable=False)
-    #author = db.relationship('UserModel', backref='books', lazy=True)
+
+    # Method to fetch BookModel instance as a dictionary for generating XML response
+    def as_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 
 class UserModel(db.Model):
@@ -40,25 +43,41 @@ class UserModel(db.Model):
 with app.app_context():
     db.create_all()
 
-books = ["Name of the Wind", "A Clash of Kings"]  # Placeholder for storing books
+#books = ["Name of the Wind", "A Clash of Kings"]  # Placeholder for storing books
 
 @app.route('/books', methods=['GET'])
 def get_books():
     books = BookModel.query.all()
     book_list = []
 
-    for book in books:
-        book_data = {
-            'id': book.id,
-            'title': book.title,
-            'description': book.description,
-            'author_id': book.author_id,
-            'cover_image_url': book.cover_image_url,
-            'price': book.price
-        }
-        book_list.append(book_data)
+    accept_header = request.headers.get('Accept')
 
-    return jsonify(book_list)
+    if 'application/xml' in accept_header:
+        # Return XML response
+        xml_books = ET.Element('books')
+        for book in books:
+            book_data = book.as_dict()
+            xml_book = ET.SubElement(xml_books, 'book')
+            for key, value in book_data.items():
+                ET.SubElement(xml_book, key).text = str(value)
+        xml_response = ET.tostring(xml_books, encoding='utf-8', method='xml')
+        return Response(xml_response, content_type='application/xml')
+
+    else:
+        # Return JSON response by default
+        for book in books:
+            book_data = {
+                'id': book.id,
+                'title': book.title,
+                'description': book.description,
+                'author_id': book.author_id,
+                'cover_image_url': book.cover_image_url,
+                'price': book.price
+            }
+            book_list.append(book_data)
+
+        return jsonify(book_list)
+
 
 @app.route('/user/publish-book', methods=['POST'])
 def publish_book():
@@ -100,7 +119,7 @@ def publish_book():
         return jsonify({'message': 'Book published successfully from JSON'}), 201
 
     else:
-        return jsonify({'error': 'Unsupported Content-Type'})
+        return jsonify({'error': 'Unsupported Content-Type of POST request'})
 
 
 
