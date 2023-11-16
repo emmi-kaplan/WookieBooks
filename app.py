@@ -1,9 +1,10 @@
 from flask import Flask, jsonify, request, Response
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect
-import xml.etree.ElementTree as ET  # For XML generation
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db
+from models import db, UserModel, BookModel
+import xml.etree.ElementTree as ET  # For XML generation
+
 
 app = Flask(__name__)
 
@@ -19,34 +20,6 @@ from auth import auth_bp
 auth_bp.db = db
 app.register_blueprint(auth_bp, url_prefix='/auth')
 
-class BookModel(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.Text, nullable=False)
-    # Foreign key relationship
-    author_id = db.Column(db.Integer, db.ForeignKey('user_model.id'), nullable=False)
-    cover_image_url = db.Column(db.String(255), nullable=False)
-    price = db.Column(db.Float, nullable=False)
-
-    # Method to fetch BookModel instance as a dictionary for generating XML response
-    def as_dict(self):
-        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
-
-
-# class UserModel(db.Model):
-#     id = db.Column(db.Integer, primary_key=True)
-#     username = db.Column(db.String(50), unique=True, nullable=False)
-#     password = db.Column(db.String(128), nullable=False)
-#     # Relationship with books
-#     user_books = db.relationship('BookModel', backref='author', lazy=True)
-#     # Optional pseudonym for the author
-#     author_pseudonym = db.Column(db.String(50), unique=True, nullable=True)
-#
-#     @property
-#     def display_name(self):
-#         # use the author_pseudonym if provided (not null) else use the name property
-#         return self.author_pseudonym or self.username
-
 
 # Create the tables inside application context
 with app.app_context():
@@ -54,36 +27,36 @@ with app.app_context():
 
 @app.route('/books', methods=['GET'])
 def get_books():
-    books = BookModel.query.all()
-    book_list = []
+    # Get query parameters for search functionality
+    title = request.args.get('title')
+    author = request.args.get('author')
 
+    # Query based on search parameters
+    books_query = BookModel.query
+    if title:
+        books_query = books_query.filter(BookModel.title.ilike(f'%{title}%'))
+    if author:
+        books_query = books_query.filter(BookModel.author.ilike(f'%{author}%'))
+
+    books = books_query.all() # return all matching books
+
+    # Check header to determine JSON or XML response
     accept_header = request.headers.get('Accept')
 
+    # Convert queried books to JSON or XML and return
     if 'application/xml' in accept_header:
         # Return XML response
-        xml_books = ET.Element('books')
+        root = ET.Element('books')
         for book in books:
-            book_data = book.as_dict()
-            xml_book = ET.SubElement(xml_books, 'book')
-            for key, value in book_data.items():
-                ET.SubElement(xml_book, key).text = str(value)
-        xml_response = ET.tostring(xml_books, encoding='utf-8', method='xml')
-        return Response(xml_response, content_type='application/xml')
+            book_element = book.serialize_xml()
+            root.append(book_element)
 
+        xml_response = ET.tostring(root, encoding='utf-8')
+        return Response(xml_response, mimetype='application/xml'), 200
     else:
         # Return JSON response by default
-        for book in books:
-            book_data = {
-                'id': book.id,
-                'title': book.title,
-                'description': book.description,
-                'author_id': book.author_id,
-                'cover_image_url': book.cover_image_url,
-                'price': book.price
-            }
-            book_list.append(book_data)
-
-        return jsonify(book_list)
+        serialized_books = [book.serialize_json() for book in books]
+        return jsonify(serialized_books), 200
 
 
 @app.route('/user/publish-book', methods=['POST'])
