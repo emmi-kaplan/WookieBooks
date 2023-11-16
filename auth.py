@@ -1,17 +1,23 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 from flask_jwt_extended import JWTManager, create_access_token
-from app import UserModel, db
+from models import db, UserModel
 
 auth_bp = Blueprint('auth', __name__)
 
-auth_bp.config = {
-    'JWT_SECRET_KEY': 'super-secret'  # Change this to a secure secret key
-}
+# Initialize JWTManager within the app context
+jwt = JWTManager()
 
-jwt = JWTManager(auth_bp)
+@auth_bp.record_once
+def on_load(state):
+    app = state.app
+    jwt.init_app(app)
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
+    #db = auth_bp.db  # Access the db instance from auth_bp
+
+    #from app import UserModel  # Import UserModel here to avoid circular import and multiple instances of db
+
     username = request.json.get('username', None)
     password = request.json.get('password', None)
 

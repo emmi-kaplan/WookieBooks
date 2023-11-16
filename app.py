@@ -3,18 +3,21 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect
 import xml.etree.ElementTree as ET  # For XML generation
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from auth import auth_bp  # Import Auth Blueprint
-
+from models import db
 
 app = Flask(__name__)
 
-# Register Blueprints
-app.register_blueprint(auth_bp, url_prefix='/auth')  # URL prefix for all routes in the Blueprint
-
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///books.db'  # Use SQLite for simplicity
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True  # Enable automatic tracking of modifications
-db = SQLAlchemy(app)
+app.config['JWT_SECRET_KEY'] = 'use-the-force-luke'  # Set your secret key here
 
+# Initialize the db with the app
+db.init_app(app)
+
+# Import and Register Blueprints
+from auth import auth_bp
+auth_bp.db = db
+app.register_blueprint(auth_bp, url_prefix='/auth')
 
 class BookModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -30,19 +33,19 @@ class BookModel(db.Model):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 
-class UserModel(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(50), unique=True, nullable=False)
-    password = db.Column(db.String(128), nullable=False)
-    # Relationship with books
-    user_books = db.relationship('BookModel', backref='author', lazy=True)
-    # Optional pseudonym for the author
-    author_pseudonym = db.Column(db.String(50), unique=True, nullable=True)
-
-    @property
-    def display_name(self):
-        # use the author_pseudonym if provided (not null) else use the name property
-        return self.author_pseudonym or self.username
+# class UserModel(db.Model):
+#     id = db.Column(db.Integer, primary_key=True)
+#     username = db.Column(db.String(50), unique=True, nullable=False)
+#     password = db.Column(db.String(128), nullable=False)
+#     # Relationship with books
+#     user_books = db.relationship('BookModel', backref='author', lazy=True)
+#     # Optional pseudonym for the author
+#     author_pseudonym = db.Column(db.String(50), unique=True, nullable=True)
+#
+#     @property
+#     def display_name(self):
+#         # use the author_pseudonym if provided (not null) else use the name property
+#         return self.author_pseudonym or self.username
 
 
 # Create the tables inside application context
