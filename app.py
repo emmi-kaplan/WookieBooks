@@ -1,13 +1,20 @@
 from flask import Flask, jsonify, request, Response
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect
-from models.Book import Book
-from models.User import User
 import xml.etree.ElementTree as ET  # For XML generation
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from auth import auth_bp  # Import Auth Blueprint
+
 
 app = Flask(__name__)
+
+# Register Blueprints
+app.register_blueprint(auth_bp, url_prefix='/auth')  # URL prefix for all routes in the Blueprint
+
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///books.db'  # Use SQLite for simplicity
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True  # Enable automatic tracking of modifications
 db = SQLAlchemy(app)
+
 
 class BookModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -25,8 +32,7 @@ class BookModel(db.Model):
 
 class UserModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(50), unique=True, nullable=False)
-    email = db.Column(db.String(100), unique=True, nullable=False)
+    username = db.Column(db.String(50), unique=True, nullable=False)
     password = db.Column(db.String(128), nullable=False)
     # Relationship with books
     user_books = db.relationship('BookModel', backref='author', lazy=True)
@@ -36,14 +42,12 @@ class UserModel(db.Model):
     @property
     def display_name(self):
         # use the author_pseudonym if provided (not null) else use the name property
-        return self.author_pseudonym or self.name
+        return self.author_pseudonym or self.username
 
 
 # Create the tables inside application context
 with app.app_context():
     db.create_all()
-
-#books = ["Name of the Wind", "A Clash of Kings"]  # Placeholder for storing books
 
 @app.route('/books', methods=['GET'])
 def get_books():
@@ -80,7 +84,14 @@ def get_books():
 
 
 @app.route('/user/publish-book', methods=['POST'])
+@jwt_required()  # Protect the endpoint requiring access token
 def publish_book():
+    current_user = get_jwt_identity()
+
+    if current_user == "_Darth Vader_":
+        security_alerted = alert_wookie_security()
+        return jsonify({'error': f'Darth Vader is not allowed to publish books. Wookie security alerted of an attempted data breech'}), 400  # Return error for invalid user
+
     content_type = request.headers.get('Content-Type')
 
     if content_type == 'application/xml':
@@ -121,7 +132,16 @@ def publish_book():
     else:
         return jsonify({'error': 'Unsupported Content-Type of POST request'})
 
+def alert_wookie_security():
+    # theoretical next steps for security breech
+    security_alerted = True
+    return security_alerted
 
+
+
+# Create the tables inside application context
+with app.app_context():
+    db.create_all()
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -1,34 +1,26 @@
-# Foobar
+# Wookie Books
 
-Foobar is a Python library for dealing with word pluralization.
+Wookie books is a bookstore REST API built using Python and Flask. 
 
-## Installation
+The API allows users to create, update, and delete books as well as query the existing books in the database.
 
-Use the package manager [pip](https://pip.pypa.io/en/stable/) to install foobar.
+### How to build and run the application
+<details>
+  <summary>Click to expand</summary>
 
-```bash
-pip install foobar
-```
+  #### Requirements
+  - Flask
+  - sqlalchemy
 
-## Usage
+  #### Running the App
+  - run  `python app.py`
+    * This will build a SQLite database and start the Flask app
+  - run  `add_test_users.py`
+    * This will seed the SQLite database with users
 
-```python
-import foobar
-
-# returns 'words'
-foobar.pluralize('word')
-
-# returns 'geese'
-foobar.pluralize('goose')
-
-# returns 'phenomenon'
-foobar.singularize('phenomena')
-```
+</details>
 
 ## Testing
 - must test pseudonym method
 
 
-## License
-
-[MIT](https://choosealicense.com/licenses/mit/)
