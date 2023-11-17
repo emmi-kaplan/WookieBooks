@@ -1,10 +1,9 @@
 from flask import Flask, jsonify, request, Response
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import inspect
+from sqlalchemy import inspect, or_
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, UserModel, BookModel
 import xml.etree.ElementTree as ET  # For XML generation
-
 
 app = Flask(__name__)
 
@@ -20,23 +19,26 @@ from auth import auth_bp
 auth_bp.db = db
 app.register_blueprint(auth_bp, url_prefix='/auth')
 
-
 # Create the tables inside application context
 with app.app_context():
     db.create_all()
 
+
+'''Endpoint for returning all BookModels in db matching query parameters'''
 @app.route('/books', methods=['GET'])
 def get_books():
     # Get query parameters for search functionality
     title = request.args.get('title')
     author = request.args.get('author')
 
-    # Query based on search parameters
-    books_query = BookModel.query
-    if title:
-        books_query = books_query.filter(BookModel.title.ilike(f'%{title}%'))
-    if author:
-        books_query = books_query.filter(BookModel.author.ilike(f'%{author}%'))
+    # Query both tables based on search parameters, search for author in both username and psuedonym
+    books_query = BookModel.query.join(UserModel).filter(
+        or_(
+            BookModel.title.ilike(f'%{title}%'),
+            UserModel.username.ilike(f'%{author}%'),
+            UserModel.author_pseudonym.ilike(f'%{author}%')
+        )
+    )
 
     books = books_query.all() # return all matching books
 
@@ -58,6 +60,8 @@ def get_books():
         serialized_books = [book.serialize_json() for book in books]
         return jsonify(serialized_books), 200
 
+
+'''Endpoint for returning UserModel for currently authenticated user'''
 @app.route('/user/details', methods=['GET'])
 @jwt_required()  # Protect the endpoint requiring access token
 def get_user_details():
@@ -68,6 +72,22 @@ def get_user_details():
     serialized_user = user.serialize_json()
     return jsonify(serialized_user), 200
 
+
+'''Endpoint for returning all BookModels published by currently authenticated user'''
+@app.route('/user/books', methods=['GET'])
+@jwt_required()  # Protect the endpoint requiring access token
+def get_user_books():
+    current_user_id = get_jwt_identity()  # Authenticated user_id
+
+    # Get the books published by the user using the user ID and serialize
+    user = UserModel.query.filter_by(id=current_user_id).first()
+    serialized_books = []
+    for book in user.user_books:
+        serialized_books.append(book.serialize_json())
+    return jsonify(serialized_books), 200
+
+
+'''Endpoint for posting a BookModel from the currently authenticated user'''
 @app.route('/user/publish-book', methods=['POST'])
 @jwt_required()  # Protect the endpoint requiring access token
 def publish_book():
