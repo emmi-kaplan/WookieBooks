@@ -58,6 +58,15 @@ def get_books():
         serialized_books = [book.serialize_json() for book in books]
         return jsonify(serialized_books), 200
 
+@app.route('/user/details', methods=['GET'])
+@jwt_required()  # Protect the endpoint requiring access token
+def get_user_details():
+    current_user_id = get_jwt_identity()  # Authenticated user_id
+
+    # Get the user details using the user ID and serialize
+    user = UserModel.query.filter_by(id=current_user_id).first()
+    serialized_user = user.serialize_json()
+    return jsonify(serialized_user), 200
 
 @app.route('/user/publish-book', methods=['POST'])
 @jwt_required()  # Protect the endpoint requiring access token

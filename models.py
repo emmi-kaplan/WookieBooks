@@ -17,6 +17,19 @@ class UserModel(db.Model):
         # use the author_pseudonym if provided (not null) else use the name property
         return self.author_pseudonym or self.username
 
+    def serialize_json(self):
+        # For user details, just return a list of titles the author has published
+        published_titles = []
+        for book in self.user_books:
+            published_titles.append(book.title)
+        return {
+                'id': self.id,
+                'username': self.username,
+                'password': self.password,  # consider not showing this info for security reasons?
+                'published books': published_titles,
+                'pseudonym': self.author_pseudonym or "No pseudonym set"  # alert users they haven't defined a pseudonym
+            }
+
 
 class BookModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
