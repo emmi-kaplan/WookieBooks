@@ -28,8 +28,8 @@ with app.app_context():
 @app.route('/books', methods=['GET'])
 def get_books():
     # Get query parameters for search functionality
-    title = request.args.get('title')
-    author = request.args.get('author')
+    title = request.args.get('title') or ''
+    author = request.args.get('author') or ''
 
     # Query both tables based on search parameters, search for author in both username and psuedonym
     books_query = BookModel.query.join(UserModel).filter(
