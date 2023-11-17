@@ -87,6 +87,31 @@ def get_user_books():
     return jsonify(serialized_books), 200
 
 
+'''Endpoint for editing a BookModel previously published by currently authenticated user'''
+@app.route('/user/books/<int:book_id>', methods=['PUT'])
+@jwt_required()  # Protect the endpoint requiring access token
+def update_book(book_id):
+    book = BookModel.query.get_or_404(book_id)  # Retrieve the book or return a 404 error if not found
+
+    # Get updated data from the request
+    data = request.get_json()
+
+    # Update the book attributes based on the request data
+    if 'title' in data:
+        book.title = data['title']
+    if 'description' in data:
+        book.description = data['description']
+    if 'cover_image_url' in data:
+        book.cover_image_url = data['cover_image_url']
+    if 'price' in data:
+        book.price = data['price']
+
+    # Commit the changes to the database
+    db.session.commit()
+
+    return jsonify({'message': 'Book updated successfully'}), 200
+
+
 '''Endpoint for posting a BookModel from the currently authenticated user'''
 @app.route('/user/publish-book', methods=['POST'])
 @jwt_required()  # Protect the endpoint requiring access token
