@@ -14,10 +14,6 @@ def on_load(state):
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
-    #db = auth_bp.db  # Access the db instance from auth_bp
-
-    #from app import UserModel  # Import UserModel here to avoid circular import and multiple instances of db
-
     username = request.json.get('username', None)
     password = request.json.get('password', None)
 
@@ -27,6 +23,13 @@ def login():
     if not password:
         return jsonify({"msg": "Missing password"}), 400
 
+    # Check user for dark side affiliation
+    if username in sith_member_usernames:
+        security_alerted = alert_wookie_security()
+        # Return error for invalid user
+        return jsonify({'error': f'Sith members are not allowed to publish books. '
+                                 f'Wookie security alerted of an attempted data breech'}), 400
+
     user = UserModel.query.filter_by(username=username).first()
 
     if user and user.password == password:  # Validate password (consider using hashing)
@@ -35,6 +38,12 @@ def login():
 
     return jsonify({"msg": "Invalid credentials"}), 401
 
+def alert_wookie_security():
+    # theoretical next steps for security breech
+    security_alerted = True
+    return security_alerted
 
+# if we find other members of the sith, add them here
+sith_member_usernames = ["_Darth Vader_"]
 
 

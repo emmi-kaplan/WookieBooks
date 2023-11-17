@@ -62,12 +62,7 @@ def get_books():
 @app.route('/user/publish-book', methods=['POST'])
 @jwt_required()  # Protect the endpoint requiring access token
 def publish_book():
-    current_user = get_jwt_identity()
-
-    if current_user == "_Darth Vader_":
-        security_alerted = alert_wookie_security()
-        return jsonify({'error': f'Darth Vader is not allowed to publish books. Wookie security alerted of an attempted data breech'}), 400  # Return error for invalid user
-
+    current_user_id = get_jwt_identity()  # Authenticated user_id
     content_type = request.headers.get('Content-Type')
 
     if content_type == 'application/xml':
@@ -94,7 +89,7 @@ def publish_book():
 
         title = data.get('title')
         description = data.get('description')
-        author_id = data.get('author_id')  # Assuming you provide the author's ID
+        author_id = current_user_id  # From jwt token provided in POST
         cover_image_url = data.get('cover_image_url')
         price = data.get('price')
 
@@ -107,12 +102,6 @@ def publish_book():
 
     else:
         return jsonify({'error': 'Unsupported Content-Type of POST request'})
-
-def alert_wookie_security():
-    # theoretical next steps for security breech
-    security_alerted = True
-    return security_alerted
-
 
 
 # Create the tables inside application context

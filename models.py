@@ -32,7 +32,7 @@ class BookModel(db.Model):
                 'id': self.id,
                 'title': self.title,
                 'description': self.description,
-                'author_id': self.author_id,
+                'author': self.author.display_name,
                 'cover_image_url': self.cover_image_url,
                 'price': self.price
             }
@@ -43,9 +43,14 @@ class BookModel(db.Model):
         # Get all attributes of the Book instance
         book_attributes = self.__dict__
 
+        # Add author element to check for pseudonym
+        author_element = ET.SubElement(book_element, 'author')
+        author_element.text = self.author.display_name
+
         for attribute, value in book_attributes.items():
-            # Exclude internal attributes and methods
-            if not attribute.startswith('_') and not callable(value):
+
+            # Exclude internal attributes and methods as well as author_id
+            if not attribute.startswith('_') and not callable(value) and not attribute.startswith('author'):
                 attribute_element = ET.SubElement(book_element, attribute)
                 attribute_element.text = str(value)
 

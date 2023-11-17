@@ -1,7 +1,6 @@
 <book>
     <title>The Name of the Wind</title>
     <description>It is a tale of sorrow, a tale of survival, a tale of one man's search for meaning in his universe, and how that search, and the indomitable will that drove it, gave birth to a legend.</description>
-    <author_id>1</author_id>
     <cover_image_url>https://example.com/sample_image.jpg</cover_image_url>
     <price>19.22</price>
 </book>
