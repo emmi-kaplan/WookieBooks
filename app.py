@@ -65,10 +65,7 @@ def get_books():
 @app.route('/user/details', methods=['GET'])
 @jwt_required()  # Protect the endpoint requiring access token
 def get_user_details():
-    current_user_id = get_jwt_identity()  # Authenticated user_id
-
-    # Get the user details using the user ID and serialize
-    user = UserModel.query.filter_by(id=current_user_id).first()
+    user = get_user_from_jwt()
     serialized_user = user.serialize_json()
     return jsonify(serialized_user), 200
 
@@ -77,10 +74,8 @@ def get_user_details():
 @app.route('/user/books', methods=['GET'])
 @jwt_required()  # Protect the endpoint requiring access token
 def get_user_books():
-    current_user_id = get_jwt_identity()  # Authenticated user_id
-
     # Get the books published by the user using the user ID and serialize
-    user = UserModel.query.filter_by(id=current_user_id).first()
+    user = get_user_from_jwt()
     serialized_books = []
     for book in user.user_books:
         serialized_books.append(book.serialize_json())
@@ -91,7 +86,11 @@ def get_user_books():
 @app.route('/user/books/<int:book_id>', methods=['PUT'])
 @jwt_required()  # Protect the endpoint requiring access token
 def update_book(book_id):
+    user = get_user_from_jwt()
     book = BookModel.query.get_or_404(book_id)  # Retrieve the book or return a 404 error if not found
+
+    if not book.author_id == user.id: # Check that the book to be modified was written by the logged-in user
+        return jsonify({'error': f'Logged in user {user.username} does not match book author. Only the original author can edit or delete this book.'}), 400  # Return error for invalid user
 
     # Get updated data from the request
     data = request.get_json()
@@ -112,11 +111,29 @@ def update_book(book_id):
     return jsonify({'message': 'Book updated successfully'}), 200
 
 
+'''Endpoint for deleting a BookModel previously published by currently authenticated user'''
+@app.route('/user/books/<int:book_id>', methods=['DELETE'])
+@jwt_required()
+def delete_book(book_id):
+    user = get_user_from_jwt()
+    book = BookModel.query.get_or_404(book_id)  # Retrieve the book or return a 404 error if not found
+
+    if not book.author_id == user.id:  # Check that the book to be modified was written by the logged-in user
+        return jsonify({
+                           'error': f'Logged in user {user.username} does not match book author. Only the original author can edit or delete this book.'}), 400  # Return error for invalid user
+
+    db.session.delete(book)  # Delete the book from the database
+    db.session.commit()
+
+    return jsonify({'message': 'Book deleted successfully'}), 200
+
+
 '''Endpoint for posting a BookModel from the currently authenticated user'''
 @app.route('/user/publish-book', methods=['POST'])
 @jwt_required()  # Protect the endpoint requiring access token
 def publish_book():
-    current_user_id = get_jwt_identity()  # Authenticated user_id
+    user = get_user_from_jwt()
+
     content_type = request.headers.get('Content-Type')
 
     if content_type == 'application/xml':
@@ -143,7 +160,7 @@ def publish_book():
 
         title = data.get('title')
         description = data.get('description')
-        author_id = current_user_id  # From jwt token provided in POST
+        author_id = user.id  # From jwt token provided in POST
         cover_image_url = data.get('cover_image_url')
         price = data.get('price')
 
@@ -156,6 +173,12 @@ def publish_book():
 
     else:
         return jsonify({'error': 'Unsupported Content-Type of POST request'})
+
+
+'''Get user model from jwt authentication in request.'''
+def get_user_from_jwt():
+    current_user_id = get_jwt_identity()  # Authenticated user_id
+    return UserModel.query.filter_by(id=current_user_id).first()
 
 
 # Create the tables inside application context
