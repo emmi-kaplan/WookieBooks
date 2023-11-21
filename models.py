@@ -30,6 +30,29 @@ class UserModel(db.Model):
                 'pseudonym': self.author_pseudonym or "No pseudonym set"  # alert users they haven't defined a pseudonym
             }
 
+    def serialize_xml(self):
+        user_element = ET.Element('user')
+
+        # Get all attributes of the User instance
+        user_attributes = self.__dict__
+
+        # For user details, just return a list of titles the author has published
+        published_titles = []
+        for book in self.user_books:
+            published_titles.append(book.title)
+
+        # Add user_books element
+        user_books_element = ET.SubElement(user_element, 'user_books')
+        user_books_element.text = str(published_titles)
+
+        for attribute, value in user_attributes.items():
+            # Exclude internal attributes and methods as well as author_id
+            if not attribute.startswith('_') and not callable(value) and not attribute.startswith('user_books'):
+                attribute_element = ET.SubElement(user_element, attribute)
+                attribute_element.text = str(value)
+
+        return user_element
+
 
 class BookModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -61,7 +84,6 @@ class BookModel(db.Model):
         author_element.text = self.author.display_name
 
         for attribute, value in book_attributes.items():
-
             # Exclude internal attributes and methods as well as author_id
             if not attribute.startswith('_') and not callable(value) and not attribute.startswith('author'):
                 attribute_element = ET.SubElement(book_element, attribute)

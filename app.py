@@ -65,7 +65,15 @@ def get_books():
 @app.route('/user/details', methods=['GET'])
 @jwt_required()  # Protect the endpoint requiring access token
 def get_user_details():
+    # Check header to determine JSON or XML response
+    accept_header = request.headers.get('Accept')
     user = get_user_from_jwt()
+
+    if 'application/xml' in accept_header:
+        serialized_user = user.serialize_xml()
+        return create_xml_response(serialized_user, 200)
+
+    # Default return json
     serialized_user = user.serialize_json()
     return jsonify(serialized_user), 200
 
@@ -74,9 +82,19 @@ def get_user_details():
 @app.route('/user/books', methods=['GET'])
 @jwt_required()  # Protect the endpoint requiring access token
 def get_user_books():
+    # Check header to determine JSON or XML response
+    accept_header = request.headers.get('Accept')
+
     # Get the books published by the user using the user ID and serialize
     user = get_user_from_jwt()
     serialized_books = []
+
+    if 'application/xml' in accept_header:
+        for book in user.user_books:
+            serialized_books.append(book.serialize_xml())
+        return create_xml_response(serialized_books, 200)
+
+    # Default return json
     for book in user.user_books:
         serialized_books.append(book.serialize_json())
     return jsonify(serialized_books), 200
@@ -86,11 +104,18 @@ def get_user_books():
 @app.route('/user/books/<int:book_id>', methods=['PUT'])
 @jwt_required()  # Protect the endpoint requiring access token
 def update_book(book_id):
+    # Check content type to determine JSON or XML response
+    content_type = request.headers.get('Content-Type')
+
+
     user = get_user_from_jwt()
     book = BookModel.query.get_or_404(book_id)  # Retrieve the book or return a 404 error if not found
 
     if not book.author_id == user.id: # Check that the book to be modified was written by the logged-in user
-        return jsonify({'error': f'Logged in user {user.username} does not match book author. Only the original author can edit or delete this book.'}), 400  # Return error for invalid user
+        # Return error for invalid user
+        if 'application/xml' in accept_header:
+            return create_xml_message(get_wrong_user_message(user.username), 400)
+        return jsonify({'error': get_wrong_user_message(user.username)}), 400
 
     # Get updated data from the request
     data = request.get_json()
@@ -108,6 +133,8 @@ def update_book(book_id):
     # Commit the changes to the database
     db.session.commit()
 
+    if content_type == 'application/xml':
+        return create_xml_message('Book updated successfully', 200)
     return jsonify({'message': 'Book updated successfully'}), 200
 
 
@@ -115,6 +142,9 @@ def update_book(book_id):
 @app.route('/user/books/<int:book_id>', methods=['DELETE'])
 @jwt_required()
 def delete_book(book_id):
+    # Check content type to determine JSON or XML response
+    content_type = request.headers.get('Content-Type')
+
     user = get_user_from_jwt()
     book = BookModel.query.get_or_404(book_id)  # Retrieve the book or return a 404 error if not found
 
@@ -125,6 +155,8 @@ def delete_book(book_id):
     db.session.delete(book)  # Delete the book from the database
     db.session.commit()
 
+    if content_type == 'application/xml':
+        return create_xml_message('Book deleted successfully', 200)
     return jsonify({'message': 'Book deleted successfully'}), 200
 
 
@@ -179,6 +211,32 @@ def publish_book():
 def get_user_from_jwt():
     current_user_id = get_jwt_identity()  # Authenticated user_id
     return UserModel.query.filter_by(id=current_user_id).first()
+
+
+'''Get wrong user message from user.'''
+def get_wrong_user_message(username):
+    return f'Logged in user {username} does not match book author. Only the original author can edit or delete this book.'
+
+
+def create_xml_response(response_body, status):
+    root = ET.Element("response")
+    for chunk in response_body:
+        root.append(chunk)
+    xml_response = ET.tostring(root, encoding='utf-8')
+    return Response(xml_response, mimetype='application/xml'), status
+
+
+def create_xml_message(response_txt, status):
+    root = ET.Element("response")
+    if status == 400:
+        error = ET.SubElement(root, "error")
+        error.text = response_txt
+    else:
+        message = ET.SubElement(root, "message")
+        message.text = response_txt
+
+    xml_response = ET.tostring(root, encoding='utf-8')
+    return Response(xml_response, mimetype='application/xml'), status
 
 
 # Create the tables inside application context

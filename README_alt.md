@@ -11,6 +11,7 @@ The API allows users to create, update, and delete books as well as query the ex
   #### Requirements
   - Flask
   - sqlalchemy
+  - pytest
 
   #### Running the App
   - run  `python app.py`
