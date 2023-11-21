@@ -1,17 +1,77 @@
 import pytest
-from app import app  # Import your Flask app
+import os.path
+import json
+from .conftest import test_app, test_client, authenticated_client, session
+import xml.etree.ElementTree as ET  # For XML generation
 
-@pytest.fixture
-def client():
-    app.config['TESTING'] = True
-    with app.test_client() as client:
-        yield client
+'''Test publish_book endpoint for json'''
+def test_publish_book_json(authenticated_client):
+    client, jwt_token = authenticated_client
 
-def test_get_books(client):
-    response = client.get('/user/books')  # Replace with your endpoint path
-    assert response.status_code == 200  # Example assertion
+    # Use the authorized client with JWT token in headers for testing protected endpoint
+    headers = {'Authorization': f'Bearer {jwt_token}'}
 
-def test_create_book(client):
-    # Test creating a book and assert the response
-    # Make a POST request to create a book and assert the response
-    pass  # Placeholder until you write the test
+    # JSON payload for the POST request
+    with open(os.path.join(os.path.dirname(__file__), 'test_data/book_data.json'), encoding="utf8") as data_file:
+        json_data = json.load(data_file)
+
+    response = client.post('/user/publish-book', json=json_data, headers=headers)
+
+    # Assert the response status code and content
+    assert b'Book published successfully' in response.data  # Check for success message in response
+    assert response.status_code == 201  # Successful creation returns status code 201
+
+'''Test publish_book endpoint for xml'''
+def test_publish_book_xml(authenticated_client):
+    client, jwt_token = authenticated_client
+
+    # Use the authorized client with JWT token in headers for testing protected endpoint
+    headers = {'Authorization': f'Bearer {jwt_token}', 'Content-Type': 'application/xml'}
+
+    # XML payload for the POST request
+    with open(os.path.join(os.path.dirname(__file__), 'test_data/book_data.xml'), encoding="utf8") as data_file:
+        tree = ET.parse(data_file)
+        xml_data = ET.tostring(tree.getroot(), encoding='utf-8', method='xml')
+
+    response = client.post('/user/publish-book', data=xml_data, headers=headers)
+
+    # Assert the response status code and content
+    assert b'Book published successfully' in response.data  # Check for success message in response
+    assert response.status_code == 201  # Successful creation returns status code 201
+
+'''Test get_user_details endpoint for json'''
+def test_get_user_details_json(authenticated_client):
+    client, jwt_token = authenticated_client
+
+    # Use the authorized client with JWT token in headers for testing protected endpoint
+    headers = {'Authorization': f'Bearer {jwt_token}'}
+
+    response = client.get('/user/details', headers=headers)
+    assert b'Lohgarra' in response.data
+    assert response.status_code == 200
+
+'''Test get_user_details endpoint for xml'''
+def test_get_user_details_xml(authenticated_client):
+    client, jwt_token = authenticated_client
+
+    # Use the authorized client with JWT token in headers for testing protected endpoint
+    headers = {'Authorization': f'Bearer {jwt_token}', 'Accept': 'application/xml'}
+
+    response = client.get('/user/details', headers=headers)
+    assert b'Lohgarra' in response.data
+    assert response.status_code == 200
+
+'''Test get_books endpoint and query for json'''
+def test_get_books_json(test_client):
+    response = test_client.get('/books/view?title=Harry%20Potter')
+    assert b'Harry Potter and the Sorcerer' in response.data
+    assert b'Harry Potter and the Chamber' in response.data
+    assert response.status_code == 200
+
+'''Test get_books endpoint and query for xml'''
+def test_get_books_xml(test_client):
+    headers = {'Accept': 'application/xml'}
+    response = test_client.get('/books/view?title=Harry%20Potter', headers=headers)
+    assert b'Harry Potter and the Sorcerer' in response.data
+    assert b'Harry Potter and the Chamber' in response.data
+    assert response.status_code == 200
