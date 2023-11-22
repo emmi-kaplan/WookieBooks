@@ -159,22 +159,29 @@ def publish_book():
 
     user = get_user_from_jwt()
 
+    new_book = BookModel()
+    # Define required fields for BookModel
+    required_fields = ['title', 'description', 'cover_image_url', 'price']
+
     if content_type == 'application/xml':
         xml_data = request.data  # Get the XML data from the request
         xml_root = ET.fromstring(xml_data)
 
-        new_book = BookModel()
-        book_attributes = [prop.key for prop in inspect(BookModel).attrs]  # Get attributes of the Book model
+        # Check for missing fields
+        extracted_data = {elem.tag: elem.text for elem in xml_root}
+        missing = validate_fields(extracted_data, required_fields)
+        if missing:
+            return jsonify({'error': f'Missing required fields: {", ".join(missing)}'}), 400
 
         # add author id
         setattr(new_book, 'author_id', user.id)
 
         for elem in xml_root:
             tag = elem.tag.lower()
-            if tag in book_attributes:  # Check if the attribute exists in the Book model
+            if tag in required_fields:  # Check if the attribute exists in the Book model
                 setattr(new_book, tag, elem.text)  # Set the attribute value
             else:
-                return jsonify({'error': f'Invalid element in XML: {tag}'}), 400  # Return error for invalid element
+                return create_xml_message(f'Invalid element in XML: {tag}',400)  # Return error for invalid element
 
         db.session.add(new_book)
         db.session.commit()
@@ -184,19 +191,33 @@ def publish_book():
     # Assume json content type by default
     data = request.get_json()
 
+    # Check for missing fields
+    missing = validate_fields(data, required_fields)
+    if missing:
+        return jsonify({'error': f'Missing required fields: {", ".join(missing)}'}), 400
+
     title = data.get('title')
     description = data.get('description')
     author_id = user.id  # From jwt token provided in POST
     cover_image_url = data.get('cover_image_url')
     price = data.get('price')
 
-    new_book = BookModel(title=title, description=description, author_id=author_id, cover_image_url=cover_image_url,
+    try:
+        new_book = BookModel(title=title, description=description, author_id=author_id, cover_image_url=cover_image_url,
                          price=price)
+    except Exception as e:
+        return jsonify({'error': f'Invalid JSON body: {e}'}), 400
+
     db.session.add(new_book)
     db.session.commit()
 
     return jsonify({'message': 'Book published successfully'}), 201
 
+
+'''Check that all fields are valid before creating model.'''
+def validate_fields(data, required_fields):
+    missing_fields = [field for field in required_fields if data.get(field) is None]
+    return missing_fields
 
 '''Get user model from jwt authentication in request.'''
 def get_user_from_jwt():

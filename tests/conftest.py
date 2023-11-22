@@ -36,16 +36,23 @@ def test_app():
                 id=1,
                 title="Harry Potter and the Sorcerer's Stone",
                 description="Rowling's debut novel, it follows Harry Potter, a young wizard who discovers his magical heritage on his eleventh birthday, when he receives a letter of acceptance to Hogwarts School of Witchcraft and Wizardry",
-                author_id=2,
+                author_id=1,
                 cover_image_url="https://example.com/sample_image.jpg",
                 price=19.99),
             BookModel(
                 id=2,
                 title="Harry Potter and the Chamber of Secrets",
                 description="The thrilling sequel to Harry Potter and the Sorcerer' Stone",
-                author_id=2,
+                author_id=1,
                 cover_image_url="https://example.com/sample_image.jpg",
                 price=19.99),
+            BookModel(
+                id=3,
+                title="Project Hail Mary",
+                description="Space aliens and crazy pseudo-science, same author as The Martain,highly recommend",
+                author_id=2,
+                cover_image_url="https://example.com/sample_image.jpg",
+                price=16.99),
         ]
         for book in test_books:
             _db.session.add(book)
