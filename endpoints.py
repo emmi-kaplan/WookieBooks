@@ -27,10 +27,10 @@ def get_books():
     books = books_query.all() # return all matching books
 
     # Check header to determine JSON or XML response
-    accept_header = request.headers.get('Accept')
+    xml_format = request.headers.get('Accept') == 'application/xml'
 
     # Convert queried books to JSON or XML and return
-    if accept_header and 'application/xml' in accept_header:
+    if xml_format:
         # Return XML response
         root = ET.Element('books')
         for book in books:
@@ -53,10 +53,10 @@ user_bp = Blueprint('user', __name__)
 @jwt_required()  # Protect the endpoint requiring access token
 def get_user_details():
     # Check header to determine JSON or XML response
-    accept_header = request.headers.get('Accept')
+    xml_format = request.headers.get('Accept') == 'application/xml'
     user = get_user_from_jwt()
 
-    if accept_header and 'application/xml' in accept_header:
+    if xml_format:
         serialized_user = user.serialize_xml()
         return create_xml_response(serialized_user, 200)
 
@@ -70,13 +70,13 @@ def get_user_details():
 @jwt_required()  # Protect the endpoint requiring access token
 def get_user_books():
     # Check header to determine JSON or XML response
-    accept_header = request.headers.get('Accept')
+    xml_format = request.headers.get('Accept') == 'application/xml'
 
     # Get the books published by the user using the user ID and serialize
     user = get_user_from_jwt()
     serialized_books = []
 
-    if accept_header and 'application/xml' in accept_header:
+    if xml_format:
         for book in user.user_books:
             serialized_books.append(book.serialize_xml())
         return create_xml_response(serialized_books, 200)
@@ -154,14 +154,14 @@ def update_book(book_id):
 @jwt_required()
 def delete_book(book_id):
     # Check content type to determine JSON or XML response
-    content_type = request.headers.get('Content-Type')
+    xml_format = request.headers.get('Content-Type') == 'application/xml'
 
     user = get_user_from_jwt()
     book = BookModel.query.get_or_404(book_id)  # Retrieve the book or return a 404 error if not found
 
     if not book.author_id == user.id:  # Check that the book to be modified was written by the logged-in user
         # Return error for invalid user
-        if content_type == 'application/xml':
+        if xml_format:
             return create_xml_message(build_invalid_user_message(user.username), 400)
         # Return json as default
         return jsonify({'error': build_invalid_user_message(user.username)}), 400
@@ -169,7 +169,7 @@ def delete_book(book_id):
     db.session.delete(book)  # Delete the book from the database
     db.session.commit()
 
-    if content_type == 'application/xml':
+    if xml_format:
         return create_xml_message(f'Book {book.title} deleted successfully', 200)
     return jsonify({'message': f'Book {book.title} deleted successfully'}), 200
 
@@ -179,7 +179,7 @@ def delete_book(book_id):
 @jwt_required()  # Protect the endpoint requiring access token
 def publish_book():
     # Check content type to determine JSON or XML response
-    content_type = request.headers.get('Content-Type')
+    xml_format = request.headers.get('Content-Type') == 'application/xml'
 
     user = get_user_from_jwt()
 
@@ -187,7 +187,7 @@ def publish_book():
     # Define required fields for BookModel
     required_fields = ['title', 'description', 'cover_image_url', 'price']
 
-    if content_type == 'application/xml':
+    if xml_format:
         xml_data = request.data  # Get the XML data from the request
         xml_root = ET.fromstring(xml_data)
 

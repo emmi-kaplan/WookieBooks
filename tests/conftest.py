@@ -96,3 +96,11 @@ def session(test_app, request):
         yield _db
         _db.drop_all()
 
+def request_headers(jwt_token, xml_datatype = False, datatype_key = ''):
+    """Writes request headers to be used in testing endpoints."""
+    # Return xml headers if xml datatype used
+    if xml_datatype:
+        return {'Authorization': f'Bearer {jwt_token}', datatype_key: 'application/xml'}
+    # Default return json headers
+    return {'Authorization': f'Bearer {jwt_token}'}
+
