@@ -9,6 +9,7 @@ def test_get_books_json(test_client):
     response = test_client.get('/books/view?title=Harry%20Potter')
     assert b'Harry Potter and the Sorcerer' in response.data
     assert b'Harry Potter and the Chamber' in response.data
+    assert not b'The Martian' in response.data
     assert response.status_code == 200
 
 '''Test get_books endpoint and author query for xml'''
