@@ -3,5 +3,7 @@
 /workspace.xml
 .idea/
 books.db
+test_books.db
 /modules.xml
 /.idea/modules.xml
+.pytest_cache/
