@@ -1,4 +1,4 @@
-from endpoints import app, db, UserModel
+from endpoints.user import app, db, UserModel
 
 
 # Must initialize and configure the app and database before calling

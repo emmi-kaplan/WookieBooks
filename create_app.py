@@ -16,15 +16,15 @@ def create_app(config_name='development'):
     db.init_app(app)
 
     # Import and Register Blueprints
-    from endpoints import books_bp
+    from endpoints.books import books_bp
     books_bp.db = db
     app.register_blueprint(books_bp, url_prefix='/books')
 
-    from endpoints import user_bp
+    from endpoints.user import user_bp
     user_bp.db = db
     app.register_blueprint(user_bp, url_prefix='/user')
 
-    from auth import auth_bp
+    from endpoints.auth import auth_bp
     auth_bp.db = db
     app.register_blueprint(auth_bp, url_prefix='/auth')
 
