@@ -53,6 +53,13 @@ def test_app():
                 author_id=2,
                 cover_image_url="https://example.com/sample_image.jpg",
                 price=16.99),
+            BookModel(
+                id=99,
+                title="Delete Me Please",
+                description="Please delete me I don't wanna be a book",
+                author_id=1,
+                cover_image_url="https://example.com/sample_image.jpg",
+                price=0.99),
         ]
         for book in test_books:
             _db.session.add(book)

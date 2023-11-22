@@ -144,14 +144,71 @@ def test_update_book_json(authenticated_client):
 
     # Use the authorized client with JWT token in headers for testing protected endpoint
     headers = {'Authorization': f'Bearer {jwt_token}'}
-    new_data = {'price': 22.59}
+    new_data = {'description':"new description",'price': 22.59}
     response = client.put('/user/books/2', json=new_data, headers=headers)
+    assert b'Book fields description, price updated successfully' in response.data
     assert response.status_code == 200
+
+'''Test update_book invalid user'''
+def test_update_book_invalid_user(authenticated_client):
+    client, jwt_token = authenticated_client
+
+    # Use the authorized client with JWT token in headers for testing protected endpoint
+    headers = {'Authorization': f'Bearer {jwt_token}'}
+    new_data = {'price': 22.59}
+    response = client.put('/user/books/3', json=new_data, headers=headers)
+    assert b'Logged in user Lohgarra does not match book author' in response.data
+    assert response.status_code == 400
 
 '''Test update_book endpoint for xml'''
 def test_update_book_xml(authenticated_client):
     client, jwt_token = authenticated_client
 
     # Use the authorized client with JWT token in headers for testing protected endpoint
-    headers = {'Authorization': f'Bearer {jwt_token}', 'Accept': 'application/xml'}
-    response = client.put('/user/books/3', headers=headers)
+    headers = {'Authorization': f'Bearer {jwt_token}', 'Content-Type': 'application/xml'}
+
+    # Create the element
+    root = ET.Element('data')
+    element = ET.SubElement(root, 'price')
+    element.text = str(15.99)
+
+    # Convert the XML tree to a string
+    xml_data = ET.tostring(root, encoding='utf-8').decode('utf-8')
+    response = client.put('/user/books/2', data=xml_data, headers=headers)
+    assert b'Book fields price updated successfully' in response.data
+    assert response.status_code == 200
+
+'''Test delete_book endpoint'''
+def test_delete_book_json(authenticated_client):
+    client, jwt_token = authenticated_client
+
+    # Use the authorized client with JWT token in headers for testing protected endpoint
+    headers = {'Authorization': f'Bearer {jwt_token}'}
+
+    response = client.delete('/user/books/99', headers=headers)
+    assert b'Book Delete Me Please deleted successfully' in response.data
+    assert response.status_code == 200
+
+'''Test authenticate user with invalid credentials'''
+def test_auth_bad_credentials(test_app):
+    client = test_app.test_client()
+
+    # Perform authentication to get JWT token
+    credentials = {'username': 'Chewbacca', 'password': 'this-aint-my-password'}
+    response = client.post('/auth/login', json=credentials)
+
+    # Assert the response status code and content
+    assert b'Invalid credentials' in response.data
+    assert response.status_code == 401
+
+'''Test authenticate invalid user: VADER ALERT!!'''
+def test_auth_vader(test_app):
+    client = test_app.test_client()
+
+    # Attempt authentication to get JWT token with vader creds
+    credentials = {'username': '_Darth Vader_', 'password': 'lukeiamurfather'}
+    response = client.post('/auth/login', json=credentials)
+
+    # Assert the response status code and content
+    assert b'Sith members are not allowed to publish or edit books' in response.data  # Check missing field 'price'
+    assert response.status_code == 400

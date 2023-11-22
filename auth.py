@@ -27,7 +27,7 @@ def login():
     if username in sith_member_usernames:
         security_alerted = alert_wookie_security()
         # Return error for invalid user
-        return jsonify({'error': f'Sith members are not allowed to publish books. '
+        return jsonify({'error': f'Sith members are not allowed to publish or edit books. '
                                  f'Wookie security alerted of an attempted data breech'}), 400
 
     user = UserModel.query.filter_by(username=username).first()
